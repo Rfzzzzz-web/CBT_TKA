@@ -132,11 +132,15 @@
       background: var(--card-bg);
       color: var(--text-main);
       font-size: 15px;
-      transition: border-color 0.2s;
+      transition: border-color 0.2s, opacity 0.2s;
     }
     .cbt-input:focus {
       outline: none;
       border-color: var(--primary);
+    }
+    .cbt-input:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
     }
 
     .btn-action {
@@ -449,7 +453,7 @@
       .app-container {
         border-radius: 0;
         border: none;
-        padding: 16px 14px 90px 14px; /* ruang bawah untuk sticky bottom bar */
+        padding: 16px 14px 90px 14px;
         min-height: 100vh;
       }
       .exam-header {
@@ -560,9 +564,15 @@
         <input type="text" id="siswa-identitas" class="cbt-input" placeholder="Contoh: 20260401">
       </div>
       <div class="form-group">
+        <label><i class="fa-solid fa-graduation-cap"></i> Mata Pelajaran:</label>
+        <select id="siswa-mapel" class="cbt-input" onchange="onMapelChange()">
+          <option value="">-- Pilih Mata Pelajaran --</option>
+        </select>
+      </div>
+      <div class="form-group">
         <label><i class="fa-solid fa-book-open"></i> Kategori Materi Ujian:</label>
-        <select id="siswa-materi" class="cbt-input">
-          <option value="">-- Memuat Materi... --</option>
+        <select id="siswa-materi" class="cbt-input" disabled>
+          <option value="">-- Pilih Mata Pelajaran Dahulu --</option>
         </select>
       </div>
       <div class="form-group">
@@ -628,7 +638,7 @@
             <div><span style="display:inline-block; width:11px; height:11px; background:#94a3b8; border-radius:3px;"></span> Kosong</div>
           </div>
           
-          <button class="btn-action" style="background:var(--success); margin-top:18px;" onclick=" toggleMobileSidebar(false); konfirmasiSelesai();">
+          <button class="btn-action" style="background:var(--success); margin-top:18px;" onclick="toggleMobileSidebar(false); konfirmasiSelesai();">
             <i class="fa-solid fa-paper-plane"></i> Selesai & Kirim Ujian
           </button>
         </div>
@@ -644,6 +654,7 @@
         <div style="font-size:13px; color:var(--text-muted); font-weight:700;">PEROLEHAN NILAI AKHIR</div>
         <div id="review-skor-besar" style="font-size:56px; font-weight:800; color:var(--primary); margin:8px 0;">0</div>
         <div id="review-nama-peserta" style="font-weight:600; color:var(--text-main);">Peserta: -</div>
+        <div id="review-mapel-materi" style="font-size:13px; color:var(--primary); font-weight:600; margin-top:4px;"></div>
         <div id="review-detail-poin" style="font-size:13px; color:var(--text-muted); margin-top:6px;"></div>
       </div>
 
@@ -692,6 +703,17 @@
           <input type="file" id="adm-file-logo" accept="image/*" class="cbt-input">
         </div>
         <button class="btn-action" onclick="simpanPengaturan()"><i class="fa-solid fa-floppy-disk"></i> Simpan Pengaturan</button>
+
+        <hr style="border:none; border-top:1px solid var(--border-color); margin:24px 0;">
+        <div style="background:var(--primary-soft); padding:14px 16px; border-radius:12px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
+          <div>
+            <div style="font-weight:700; font-size:14px;">Sinkronisasi Struktur Spreadsheet</div>
+            <div style="font-size:12.5px; color:var(--text-muted);">Otomatis tambahkan kolom <code>Mata_Pelajaran</code> di Sheet BankSoal & RekapNilai jika belum ada.</div>
+          </div>
+          <button type="button" class="icon-btn" onclick="jalankanMigrasiSpreadsheet()">
+            <i class="fa-solid fa-table-columns"></i> Perbarui Struktur Sheet
+          </button>
+        </div>
       </div>
 
       <!-- Tab 2: Sematkan Gambar ke Soal -->
@@ -744,6 +766,8 @@
     let timerInterval = null;
     let sisaDetik = 0;
     let waktuSelesaiTimestamp = 0;
+    let activeMapel = '';
+    let activeMateri = '';
 
     // Fungsi Helper Pemanggil API (Mendukung GitHub Pages via Fetch maupun GAS HtmlService)
     async function callApi(action, data = {}) {
@@ -754,12 +778,13 @@
             .withFailureHandler(reject);
 
           if (action === 'getInisialisasiApp') runner.getInisialisasiApp();
-          else if (action === 'mulaiUjian') runner.mulaiUjianServer(data.token, data.materi);
+          else if (action === 'mulaiUjian') runner.mulaiUjianServer(data.token, data.mapel, data.materi);
           else if (action === 'submitUjian') runner.submitUjian(data.payload);
           else if (action === 'loginAdmin') runner.loginAdmin(data.pin);
           else if (action === 'simpanPengaturanAdmin') runner.simpanPengaturanAdmin(data.nama, data.logoBase64, data.token, data.durasi);
           else if (action === 'getDaftarIdSoal') runner.getDaftarIdSoal();
           else if (action === 'pasangGambarKeBanyakSoal') runner.pasangGambarKeBanyakSoal(data.selectedIds, data.gambarBase64);
+          else if (action === 'migrasiSpreadsheet') runner.migrasiStrukturSpreadsheet();
         });
       }
 
@@ -783,14 +808,41 @@
         document.getElementById('display-school-name').innerText = data.namaSekolah || 'SD NEGERI 4 SUCI';
         if (data.logoSekolah) document.getElementById('display-logo').src = data.logoSekolah;
 
+        const selMapel = document.getElementById('siswa-mapel');
         const selMateri = document.getElementById('siswa-materi');
-        selMateri.innerHTML = '<option value="">-- Pilih Materi Ujian --</option>';
-        (data.daftarMateri || []).forEach(m => {
-          selMateri.innerHTML += `<option value="${m}">${m}</option>`;
+
+        const listMapel = data.daftarMapel || [];
+        selMapel.innerHTML = '<option value="">-- Pilih Mata Pelajaran --</option>';
+        listMapel.forEach(mp => {
+          selMapel.innerHTML += `<option value="${mp}">${mp}</option>`;
         });
+
+        selMateri.innerHTML = '<option value="">-- Pilih Mata Pelajaran Dahulu --</option>';
+        selMateri.disabled = true;
       } catch (err) {
         console.error('Gagal memuat inisialisasi:', err);
       }
+    }
+
+    // Filter Kategori Materi berdasarkan Mata Pelajaran yang dipilih
+    function onMapelChange() {
+      const mapelDipilih = document.getElementById('siswa-mapel').value;
+      const selMateri = document.getElementById('siswa-materi');
+
+      if (!mapelDipilih) {
+        selMateri.innerHTML = '<option value="">-- Pilih Mata Pelajaran Dahulu --</option>';
+        selMateri.disabled = true;
+        return;
+      }
+
+      const mapRelasi = appConfig.mapelMateriMap || {};
+      const daftarMateriMapel = mapRelasi[mapelDipilih] || appConfig.daftarMateri || [];
+
+      selMateri.innerHTML = '<option value="">-- Pilih Materi Ujian --</option>';
+      daftarMateriMapel.forEach(m => {
+        selMateri.innerHTML += `<option value="${m}">${m}</option>`;
+      });
+      selMateri.disabled = false;
     }
 
     // Simpan & Pulihkan Sesi Otomatis jika Browser HP Ke-refresh
@@ -799,7 +851,8 @@
       const sesi = {
         nama: document.getElementById('siswa-nama').value.trim(),
         identitas: document.getElementById('siswa-identitas').value.trim(),
-        materi: document.getElementById('siswa-materi').value,
+        mapel: activeMapel,
+        materi: activeMateri,
         soalList,
         currentIndex,
         jawabanPeserta,
@@ -829,8 +882,10 @@
           statusRagu = sesi.statusRagu || {};
           jumlahPelanggaran = sesi.jumlahPelanggaran || 0;
           waktuSelesaiTimestamp = sesi.waktuSelesaiTimestamp;
+          activeMapel = sesi.mapel || '';
+          activeMateri = sesi.materi || '';
 
-          bukaLembarCBT(sesi.nama, sesi.identitas, sesi.materi, true);
+          bukaLembarCBT(sesi.nama, sesi.identitas, activeMapel, activeMateri, true);
         } else {
           hapusSesiLokal();
         }
@@ -867,40 +922,43 @@
     async function mulaiMasukUjian() {
       const nama = document.getElementById('siswa-nama').value.trim();
       const iden = document.getElementById('siswa-identitas').value.trim();
+      const mapel = document.getElementById('siswa-mapel').value;
       const materi = document.getElementById('siswa-materi').value;
       const token = document.getElementById('siswa-token').value.trim();
 
-      if (!nama || !iden || !materi || !token) {
-        Swal.fire('Perhatian', 'Semua kolom identitas, materi, dan token wajib diisi!', 'warning');
+      if (!nama || !iden || !mapel || !materi || !token) {
+        Swal.fire('Perhatian', 'Semua kolom identitas, mata pelajaran, materi, dan token wajib diisi!', 'warning');
         return;
       }
 
       Swal.fire({ title: 'Memvalidasi & Memuat Soal...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
 
       try {
-        const res = await callApi('mulaiUjian', { token, materi });
+        const res = await callApi('mulaiUjian', { token, mapel, materi });
         if (!res.valid) {
           Swal.fire('Gagal', 'Token ujian tidak valid!', 'error');
           return;
         }
         if (!res.soal || res.soal.length === 0) {
-          Swal.fire('Kosong', 'Belum ada soal untuk materi yang dipilih.', 'info');
+          Swal.fire('Kosong', 'Belum ada soal untuk mata pelajaran & materi yang dipilih.', 'info');
           return;
         }
         Swal.close();
         soalList = res.soal;
-        bukaLembarCBT(nama, iden, materi, false);
+        activeMapel = mapel;
+        activeMateri = materi;
+        bukaLembarCBT(nama, iden, mapel, materi, false);
       } catch (err) {
         Swal.fire('Gagal Terhubung', 'Pastikan koneksi internet stabil dan deployment GAS sudah diperbarui.', 'error');
       }
     }
 
-    function bukaLembarCBT(nama, iden, materi, isRestore = false) {
+    function bukaLembarCBT(nama, iden, mapel, materi, isRestore = false) {
       document.getElementById('top-controls-bar').style.display = 'none';
       document.getElementById('page-portal').style.display = 'none';
       document.getElementById('page-review').style.display = 'none';
       document.getElementById('page-ujian').style.display = 'block';
-      document.getElementById('peserta-info').innerHTML = `<i class="fa-solid fa-user-graduate"></i> <span>${nama} (${iden}) &bull; ${materi}</span>`;
+      document.getElementById('peserta-info').innerHTML = `<i class="fa-solid fa-user-graduate"></i> <span>${nama} (${iden}) &bull; ${mapel} - ${materi}</span>`;
       
       ujianAktif = true;
       if (!isRestore) {
@@ -1235,6 +1293,8 @@
       const payload = {
         nama: document.getElementById('siswa-nama').value,
         identitas: document.getElementById('siswa-identitas').value,
+        mapel: activeMapel,
+        materi: activeMateri,
         jawaban: jawabanPeserta,
         pelanggaran: jumlahPelanggaran
       };
@@ -1254,6 +1314,7 @@
 
       document.getElementById('review-skor-besar').innerText = res.skor;
       document.getElementById('review-nama-peserta').innerText = `Peserta: ${payload.nama} (${payload.identitas})`;
+      document.getElementById('review-mapel-materi').innerText = `${payload.mapel} — ${payload.materi}`;
       document.getElementById('review-detail-poin').innerText = `Skor Mentah: ${res.skorMentah} / ${res.maksSkor} poin`;
 
       const gridRev = document.getElementById('grid-review-container');
@@ -1351,6 +1412,17 @@
         document.getElementById('tab-btn-gambar').classList.add('active');
         document.getElementById('tab-admin-pengaturan').style.display = 'none';
         document.getElementById('tab-admin-gambar').style.display = 'block';
+      }
+    }
+
+    async function jalankanMigrasiSpreadsheet() {
+      Swal.fire({ title: 'Memperbarui Struktur Sheet...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+      try {
+        const res = await callApi('migrasiSpreadsheet');
+        Swal.fire('Berhasil!', res.pesan || 'Struktur Spreadsheet berhasil diperbarui.', 'success');
+        muatInisialisasi();
+      } catch (e) {
+        Swal.fire('Gagal', 'Tidak dapat memperbarui struktur Spreadsheet.', 'error');
       }
     }
 
