@@ -106,7 +106,7 @@
       position: absolute;
       top: calc(100% + 8px);
       right: 0;
-      width: 230px;
+      width: 245px;
       background: var(--card-bg);
       border: 1px solid var(--border-color);
       border-radius: 14px;
@@ -196,6 +196,7 @@
       background: var(--card-bg);
       color: var(--text-main);
       font-size: 15px;
+      font-family: inherit;
       transition: border-color 0.2s, opacity 0.2s;
     }
     .cbt-input:focus {
@@ -580,6 +581,65 @@
       font-weight: 600;
     }
 
+    /* HALAMAN INTERAKSI PENGGUNA (SARAN & KOREKSI SOAL) */
+    .interaksi-grid {
+      display: grid;
+      grid-template-columns: 380px 1fr;
+      gap: 22px;
+      align-items: flex-start;
+    }
+    .interaksi-card {
+      background: var(--card-bg);
+      padding: 20px;
+      border-radius: 16px;
+      border: 1px solid var(--border-color);
+    }
+    .feed-item {
+      background: var(--card-bg);
+      padding: 16px 18px;
+      border-radius: 14px;
+      border: 1px solid var(--border-color);
+      margin-bottom: 12px;
+    }
+    .feed-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-bottom: 8px;
+    }
+    .badge-kategori {
+      font-size: 11.5px;
+      font-weight: 700;
+      padding: 4px 10px;
+      border-radius: 6px;
+      background: var(--primary-soft);
+      color: var(--primary);
+    }
+    .badge-status {
+      font-size: 11.5px;
+      font-weight: 700;
+      padding: 4px 10px;
+      border-radius: 6px;
+    }
+    .badge-status.menunggu {
+      background: rgba(245, 158, 11, 0.15);
+      color: var(--warning);
+    }
+    .badge-status.selesai {
+      background: rgba(22, 163, 74, 0.15);
+      color: var(--success);
+    }
+    .admin-reply-box {
+      margin-top: 10px;
+      padding: 10px 14px;
+      border-radius: 10px;
+      background: var(--primary-soft);
+      border-left: 3px solid var(--primary);
+      font-size: 13.5px;
+    }
+
     /* ADMIN TABS */
     .admin-tab {
       display: inline-block;
@@ -641,7 +701,8 @@
       .opsi-box {
         padding: 12px 14px;
       }
-      .ranking-filter-grid {
+      .ranking-filter-grid,
+      .interaksi-grid {
         grid-template-columns: 1fr;
       }
 
@@ -710,6 +771,9 @@
           <button class="menu-item" onclick="bukaHalamanRanking()">
             <i class="fa-solid fa-trophy"></i> <span>Ranking 10 Besar</span>
           </button>
+          <button class="menu-item" onclick="bukaHalamanInteraksi()">
+            <i class="fa-solid fa-comments"></i> <span>Saran & Koreksi Soal</span>
+          </button>
           <button class="menu-item" onclick="toggleTema()">
             <i id="theme-icon" class="fa-solid fa-moon"></i> <span id="theme-label">Mode Gelap</span>
           </button>
@@ -762,7 +826,7 @@
       </button>
     </div>
 
-    <!-- HALAMAN BARU: RANKING 10 BESAR -->
+    <!-- HALAMAN RANKING 10 BESAR -->
     <div id="page-ranking" style="display:none;">
       <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; margin-bottom:18px;">
         <div>
@@ -794,6 +858,83 @@
         <div style="text-align:center; padding:35px 15px; color:var(--text-muted); background:var(--card-bg); border-radius:16px; border:1px solid var(--border-color);">
           <i class="fa-solid fa-medal" style="font-size:36px; color:var(--primary); margin-bottom:10px; display:block;"></i>
           Silakan pilih <strong>Mata Pelajaran</strong> dan <strong>Kategori Materi</strong> di atas untuk melihat 10 Besar nilai terbaik.
+        </div>
+      </div>
+    </div>
+
+    <!-- HALAMAN BARU: INTERAKSI PENGGUNA (SARAN & KOREKSI SOAL) -->
+    <div id="page-interaksi" style="display:none;">
+      <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; margin-bottom:18px;">
+        <div>
+          <h2 style="margin:0; font-size:22px;"><i class="fa-solid fa-comments" style="color:var(--primary);"></i> Ruang Interaksi: Saran & Koreksi Soal</h2>
+          <p style="margin:4px 0 0 0; font-size:13.5px; color:var(--text-muted);">Sampaikan masukan, saran fitur, atau laporkan apabila ada soal/kunci jawaban yang perlu dikoreksi.</p>
+        </div>
+        <div style="display:flex; gap:8px;">
+          <button class="icon-btn" onclick="muatDaftarInteraksi()"><i class="fa-solid fa-rotate"></i> Segarkan</button>
+          <button class="icon-btn" onclick="bukaHalamanPortal()"><i class="fa-solid fa-arrow-left"></i> Kembali</button>
+        </div>
+      </div>
+
+      <div class="interaksi-grid">
+        <!-- Kolom Kiri: Form Kirim Masukan / Koreksi -->
+        <div class="interaksi-card">
+          <h3 style="margin:0 0 14px 0; font-size:16.5px;"><i class="fa-solid fa-paper-plane"></i> Kirim Masukan Baru</h3>
+
+          <div class="form-group">
+            <label>Nama Pengirim:</label>
+            <input type="text" id="interaksi-nama" class="cbt-input" placeholder="Nama lengkap / Kelas...">
+          </div>
+
+          <div class="form-group">
+            <label>Kategori Masukan:</label>
+            <select id="interaksi-kategori" class="cbt-input" onchange="onInteraksiKategoriChange()">
+              <option value="Koreksi Soal">Koreksi Soal / Kunci Jawaban</option>
+              <option value="Saran Fitur">Saran Fitur & Tampilan</option>
+              <option value="Kendala Teknis">Laporan Kendala Teknis</option>
+              <option value="Lainnya">Lainnya</option>
+            </select>
+          </div>
+
+          <!-- Box Detail Soal (Tampil jika kategori = Koreksi Soal) -->
+          <div id="box-detail-koreksi-soal">
+            <div class="form-group">
+              <label>Mata Pelajaran Terkait:</label>
+              <select id="interaksi-mapel" class="cbt-input" onchange="onInteraksiMapelChange()">
+                <option value="-">-- Pilih Mata Pelajaran --</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Kategori Materi:</label>
+              <select id="interaksi-materi" class="cbt-input">
+                <option value="-">-- Pilih Materi --</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Nomor / Kode Soal:</label>
+              <input type="text" id="interaksi-nomor-soal" class="cbt-input" placeholder="Contoh: Nomor 5 atau S05">
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label>Detail Saran / Koreksi:</label>
+            <textarea id="interaksi-pesan" class="cbt-input" rows="4" placeholder="Tuliskan detail koreksi soal atau saran Anda dengan jelas..."></textarea>
+          </div>
+
+          <button class="btn-action" onclick="kirimMasukanPengguna()">
+            <i class="fa-solid fa-paper-plane"></i> Kirim Masukan
+          </button>
+        </div>
+
+        <!-- Kolom Kanan: Daftar Riwayat Masukan & Tanggapan Guru/Admin -->
+        <div>
+          <div style="font-weight:700; font-size:15.5px; margin-bottom:12px;">
+            <i class="fa-solid fa-bullhorn"></i> Daftar Masukan & Tanggapan Terbaru
+          </div>
+          <div id="interaksi-feed-container">
+            <div style="text-align:center; padding:30px; color:var(--text-muted); background:var(--card-bg); border-radius:16px; border:1px solid var(--border-color);">
+              Memuat daftar interaksi...
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -880,11 +1021,14 @@
         </div>
       </div>
 
-      <div style="display:flex; gap:10px; justify-content:center; flex-wrap:wrap; max-width:440px; margin:15px auto;">
-        <button class="btn-action" style="background:#f59e0b; flex:1;" onclick="lihatRankingSetelahUjian()">
-          <i class="fa-solid fa-trophy"></i> Lihat Ranking 10 Besar
+      <div style="display:flex; gap:10px; justify-content:center; flex-wrap:wrap; max-width:580px; margin:15px auto;">
+        <button class="btn-action" style="background:#f59e0b; flex:1; min-width:160px;" onclick="lihatRankingSetelahUjian()">
+          <i class="fa-solid fa-trophy"></i> Ranking 10 Besar
         </button>
-        <button class="btn-action" style="background:var(--primary); flex:1;" onclick="kembaliKeHalamanUtama()">
+        <button class="btn-action" style="background:#0d9488; flex:1; min-width:160px;" onclick="bukaInteraksiSetelahUjian()">
+          <i class="fa-solid fa-comments"></i> Koreksi Soal / Saran
+        </button>
+        <button class="btn-action" style="background:var(--primary); flex:1; min-width:160px;" onclick="kembaliKeHalamanUtama()">
           <i class="fa-solid fa-house"></i> Halaman Utama
         </button>
       </div>
@@ -897,9 +1041,10 @@
         <button class="icon-btn" onclick="tutupAdmin()"><i class="fa-solid fa-arrow-left"></i> Kembali</button>
       </div>
 
-      <div style="margin:18px 0; border-bottom:1px solid var(--border-color);">
+      <div style="margin:18px 0; border-bottom:1px solid var(--border-color); display:flex; flex-wrap:wrap; gap:4px;">
         <span class="admin-tab active" id="tab-btn-pengaturan" onclick="switchAdminTab('pengaturan')">Identitas & Token</span>
-        <span class="admin-tab" id="tab-btn-gambar" onclick="switchAdminTab('edit-gambar')">Sematkan Gambar ke Soal</span>
+        <span class="admin-tab" id="tab-btn-gambar" onclick="switchAdminTab('edit-gambar')">Sematkan Gambar</span>
+        <span class="admin-tab" id="tab-btn-interaksi" onclick="switchAdminTab('interaksi')">Kotak Saran & Koreksi</span>
       </div>
 
       <!-- Tab 1: Identitas & Token -->
@@ -926,7 +1071,7 @@
         <div style="background:var(--primary-soft); padding:14px 16px; border-radius:12px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
           <div>
             <div style="font-weight:700; font-size:14px;">Sinkronisasi Struktur Spreadsheet</div>
-            <div style="font-size:12.5px; color:var(--text-muted);">Otomatis tambahkan kolom <code>Mata_Pelajaran</code> di Sheet BankSoal & RekapNilai jika belum ada.</div>
+            <div style="font-size:12.5px; color:var(--text-muted);">Otomatis siapkan kolom <code>Mata_Pelajaran</code> & sheet <code>SaranKoreksi</code> jika belum ada.</div>
           </div>
           <button type="button" class="icon-btn" onclick="jalankanMigrasiSpreadsheet()">
             <i class="fa-solid fa-table-columns"></i> Perbarui Struktur Sheet
@@ -962,6 +1107,19 @@
         <button class="btn-action" onclick="unggahGambarKeSoal()">
           <i class="fa-solid fa-cloud-arrow-up"></i> Sematkan Gambar ke Soal Terpilih
         </button>
+      </div>
+
+      <!-- Tab 3: Kelola Kotak Saran & Koreksi Soal -->
+      <div id="tab-admin-interaksi" style="display:none;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;">
+          <p style="font-size:14px; color:var(--text-muted); margin:0;">
+            Tanggapi masukan siswa atau tandai koreksi soal yang sudah diperbaiki.
+          </p>
+          <button class="icon-btn" onclick="muatDaftarInteraksiAdmin()"><i class="fa-solid fa-rotate"></i> Segarkan</button>
+        </div>
+        <div id="admin-interaksi-container">
+          <div style="color:var(--text-muted); font-size:13px;">Memuat data saran & koreksi...</div>
+        </div>
       </div>
     </div>
   </div>
@@ -999,6 +1157,9 @@
           else if (action === 'mulaiUjian') runner.mulaiUjianServer(data.token, data.mapel, data.materi);
           else if (action === 'submitUjian') runner.submitUjian(data.payload);
           else if (action === 'getRanking') runner.getRanking(data.mapel, data.materi);
+          else if (action === 'kirimSaranKoreksi') runner.kirimSaranKoreksi(data.payload);
+          else if (action === 'getDaftarSaranKoreksi') runner.getDaftarSaranKoreksi();
+          else if (action === 'balasSaranKoreksiAdmin') runner.balasSaranKoreksiAdmin(data.idPesan, data.status, data.balasan);
           else if (action === 'loginAdmin') runner.loginAdmin(data.pin);
           else if (action === 'simpanPengaturanAdmin') runner.simpanPengaturanAdmin(data.nama, data.logoBase64, data.token, data.durasi);
           else if (action === 'getDaftarIdSoal') runner.getDaftarIdSoal();
@@ -1042,6 +1203,7 @@
     function sembunyikanSemuaHalaman() {
       document.getElementById('page-portal').style.display = 'none';
       document.getElementById('page-ranking').style.display = 'none';
+      document.getElementById('page-interaksi').style.display = 'none';
       document.getElementById('page-ujian').style.display = 'none';
       document.getElementById('page-review').style.display = 'none';
       document.getElementById('page-admin').style.display = 'none';
@@ -1088,6 +1250,13 @@
         listMapel.forEach(mp => {
           rankMapel.innerHTML += `<option value="${mp}">${mp}</option>`;
         });
+
+        // Isi dropdown Mapel di Halaman Interaksi
+        const interMapel = document.getElementById('interaksi-mapel');
+        interMapel.innerHTML = '<option value="-">-- Pilih Mata Pelajaran --</option>';
+        listMapel.forEach(mp => {
+          interMapel.innerHTML += `<option value="${mp}">${mp}</option>`;
+        });
       } catch (err) {
         console.error('Gagal memuat inisialisasi:', err);
       }
@@ -1115,6 +1284,146 @@
     }
 
     // =========================================================================
+    // LOGIKA HALAMAN INTERAKSI PENGGUNA (SARAN & KOREKSI SOAL)
+    // =========================================================================
+    function bukaHalamanInteraksi() {
+      tutupFloatingMenu();
+      sembunyikanSemuaHalaman();
+      document.getElementById('top-controls-bar').style.display = 'flex';
+      document.getElementById('page-interaksi').style.display = 'block';
+
+      const namaLogin = document.getElementById('siswa-nama').value.trim();
+      if (namaLogin && !document.getElementById('interaksi-nama').value) {
+        document.getElementById('interaksi-nama').value = namaLogin;
+      }
+
+      muatDaftarInteraksi();
+    }
+
+    function bukaInteraksiSetelahUjian() {
+      bukaHalamanInteraksi();
+      document.getElementById('interaksi-kategori').value = 'Koreksi Soal';
+      onInteraksiKategoriChange();
+
+      if (activeMapel) {
+        document.getElementById('interaksi-mapel').value = activeMapel;
+        onInteraksiMapelChange(activeMateri);
+      }
+    }
+
+    function onInteraksiKategoriChange() {
+      const kat = document.getElementById('interaksi-kategori').value;
+      const boxSoal = document.getElementById('box-detail-koreksi-soal');
+      boxSoal.style.display = (kat === 'Koreksi Soal') ? 'block' : 'none';
+    }
+
+    function onInteraksiMapelChange(defaultMateri = '') {
+      const mp = document.getElementById('interaksi-mapel').value;
+      const selMateri = document.getElementById('interaksi-materi');
+      const mapRelasi = appConfig.mapelMateriMap || {};
+      const list = mapRelasi[mp] || [];
+
+      selMateri.innerHTML = '<option value="-">-- Pilih Materi --</option>';
+      list.forEach(m => {
+        selMateri.innerHTML += `<option value="${m}">${m}</option>`;
+      });
+
+      if (defaultMateri && list.includes(defaultMateri)) {
+        selMateri.value = defaultMateri;
+      }
+    }
+
+    async function kirimMasukanPengguna() {
+      const nama = document.getElementById('interaksi-nama').value.trim();
+      const kategori = document.getElementById('interaksi-kategori').value;
+      const mapel = kategori === 'Koreksi Soal' ? document.getElementById('interaksi-mapel').value : '-';
+      const materi = kategori === 'Koreksi Soal' ? document.getElementById('interaksi-materi').value : '-';
+      const nomorSoal = kategori === 'Koreksi Soal' ? document.getElementById('interaksi-nomor-soal').value.trim() : '-';
+      const pesan = document.getElementById('interaksi-pesan').value.trim();
+
+      if (!nama || !pesan) {
+        Swal.fire('Perhatian', 'Nama pengirim dan detail pesan/koreksi wajib diisi!', 'warning');
+        return;
+      }
+
+      Swal.fire({ title: 'Mengirim Masukan...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+
+      try {
+        await callApi('kirimSaranKoreksi', {
+          payload: { nama, kategori, mapel, materi, nomorSoal, pesan }
+        });
+        Swal.fire('Terima Kasih!', 'Masukan / koreksi soal Anda berhasil dikirim.', 'success');
+        document.getElementById('interaksi-pesan').value = '';
+        document.getElementById('interaksi-nomor-soal').value = '';
+        muatDaftarInteraksi();
+      } catch (e) {
+        Swal.fire('Gagal', 'Tidak dapat mengirim masukan. Periksa koneksi internet Anda.', 'error');
+      }
+    }
+
+    async function muatDaftarInteraksi() {
+      const container = document.getElementById('interaksi-feed-container');
+      container.innerHTML = `
+        <div style="text-align:center; padding:30px; color:var(--text-muted); background:var(--card-bg); border-radius:16px; border:1px solid var(--border-color);">
+          <i class="fa-solid fa-spinner fa-spin" style="font-size:24px; color:var(--primary); margin-bottom:8px; display:block;"></i>
+          Memuat daftar saran & koreksi...
+        </div>`;
+
+      try {
+        const list = await callApi('getDaftarSaranKoreksi');
+        if (!list || list.length === 0) {
+          container.innerHTML = `
+            <div style="text-align:center; padding:35px 15px; color:var(--text-muted); background:var(--card-bg); border-radius:16px; border:1px solid var(--border-color);">
+              <i class="fa-regular fa-comment-dots" style="font-size:32px; margin-bottom:8px; display:block; opacity:0.6;"></i>
+              Belum ada saran atau koreksi soal yang dikirimkan.
+            </div>`;
+          return;
+        }
+
+        let html = '';
+        list.forEach(item => {
+          const isSelesai = item.status.toLowerCase().includes('selesai') || item.status.toLowerCase().includes('ditanggapi') || item.status.toLowerCase().includes('diperbaiki');
+          const statusCls = isSelesai ? 'selesai' : 'menunggu';
+          const infoMapel = (item.mapel && item.mapel !== '-')
+            ? `<div style="font-size:12.5px; color:var(--text-muted); margin-bottom:6px;">
+                 <i class="fa-solid fa-book"></i> <strong>${item.mapel}</strong> (${item.materi}) ${item.nomorSoal && item.nomorSoal !== '-' ? `&bull; Soal: <strong>${item.nomorSoal}</strong>` : ''}
+               </div>`
+            : '';
+
+          const htmlBalasan = item.balasan
+            ? `<div class="admin-reply-box">
+                 <div style="font-weight:700; font-size:12px; color:var(--primary); margin-bottom:3px;">
+                   <i class="fa-solid fa-user-check"></i> Tanggapan Admin / Guru:
+                 </div>
+                 <div>${item.balasan}</div>
+               </div>`
+            : '';
+
+          html += `
+            <div class="feed-item">
+              <div class="feed-header">
+                <div>
+                  <span style="font-weight:700; font-size:14.5px;">${item.nama}</span>
+                  <span style="font-size:12px; color:var(--text-muted); margin-left:6px;">${item.waktu}</span>
+                </div>
+                <div style="display:flex; gap:6px; align-items:center;">
+                  <span class="badge-kategori">${item.kategori}</span>
+                  <span class="badge-status ${statusCls}">${item.status}</span>
+                </div>
+              </div>
+              ${infoMapel}
+              <div style="font-size:14.5px; line-height:1.5; white-space:pre-line;">${item.pesan}</div>
+              ${htmlBalasan}
+            </div>`;
+        });
+
+        container.innerHTML = html;
+      } catch (e) {
+        container.innerHTML = `<div style="color:var(--danger); padding:20px;">Gagal memuat daftar interaksi.</div>`;
+      }
+    }
+
+    // =========================================================================
     // LOGIKA HALAMAN RANKING 10 BESAR
     // =========================================================================
     function bukaHalamanRanking() {
@@ -1123,7 +1432,6 @@
       document.getElementById('top-controls-bar').style.display = 'flex';
       document.getElementById('page-ranking').style.display = 'block';
 
-      // Jika sudah ada mapel pertama dan belum dipilih, otomatis pilih mapel & materi pertama agar langsung tampil
       const rankMapel = document.getElementById('rank-mapel');
       if (!rankMapel.value && appConfig.daftarMapel && appConfig.daftarMapel.length > 0) {
         rankMapel.value = appConfig.daftarMapel[0];
@@ -1139,7 +1447,6 @@
       document.getElementById('page-ranking').style.display = 'block';
 
       const rankMapel = document.getElementById('rank-mapel');
-      const rankMateri = document.getElementById('rank-materi');
       if (activeMapel) {
         rankMapel.value = activeMapel;
         onRankMapelChange(activeMateri);
@@ -1528,7 +1835,6 @@
         jawabanPeserta[id] = input ? input.value.trim() : '';
       }
 
-      // Highlight kartu opsi yang dipilih
       document.querySelectorAll('.opsi-box').forEach(lbl => {
         const inp = lbl.querySelector('input');
         if (inp && inp.checked) lbl.classList.add('selected');
@@ -1622,7 +1928,6 @@
       html += `</div>`;
       container.innerHTML = html;
 
-      // Update tombol Sebelumnya & Berikutnya
       const btnPrev = document.getElementById('btn-prev-action');
       btnPrev.disabled = (idx === 0);
       btnPrev.style.opacity = (idx === 0) ? '0.45' : '1';
@@ -1788,6 +2093,7 @@
               document.getElementById('adm-token').value = authRes.tokenUjian || '';
               document.getElementById('adm-durasi').value = appConfig.durasiUjian || 60;
               muatDaftarSoalAdmin();
+              muatDaftarInteraksiAdmin();
             } else {
               Swal.fire('Akses Ditolak', 'PIN Admin salah!', 'error');
             }
@@ -1805,14 +2111,80 @@
 
     function switchAdminTab(tab) {
       document.querySelectorAll('.admin-tab').forEach(t => t.classList.remove('active'));
+      document.getElementById('tab-admin-pengaturan').style.display = 'none';
+      document.getElementById('tab-admin-gambar').style.display = 'none';
+      document.getElementById('tab-admin-interaksi').style.display = 'none';
+
       if (tab === 'pengaturan') {
         document.getElementById('tab-btn-pengaturan').classList.add('active');
         document.getElementById('tab-admin-pengaturan').style.display = 'block';
-        document.getElementById('tab-admin-gambar').style.display = 'none';
-      } else {
+      } else if (tab === 'edit-gambar') {
         document.getElementById('tab-btn-gambar').classList.add('active');
-        document.getElementById('tab-admin-pengaturan').style.display = 'none';
         document.getElementById('tab-admin-gambar').style.display = 'block';
+      } else if (tab === 'interaksi') {
+        document.getElementById('tab-btn-interaksi').classList.add('active');
+        document.getElementById('tab-admin-interaksi').style.display = 'block';
+        muatDaftarInteraksiAdmin();
+      }
+    }
+
+    async function muatDaftarInteraksiAdmin() {
+      const container = document.getElementById('admin-interaksi-container');
+      container.innerHTML = '<div style="color:var(--text-muted); font-size:13px;">Memuat data saran & koreksi...</div>';
+      try {
+        const list = await callApi('getDaftarSaranKoreksi');
+        if (!list || list.length === 0) {
+          container.innerHTML = '<div style="color:var(--text-muted); padding:15px;">Belum ada saran atau koreksi soal dari pengguna.</div>';
+          return;
+        }
+        let html = '';
+        list.forEach(item => {
+          const infoMapel = (item.mapel && item.mapel !== '-')
+            ? `<div style="font-size:12.5px; color:var(--primary); font-weight:600; margin-bottom:4px;">
+                 ${item.mapel} - ${item.materi} ${item.nomorSoal && item.nomorSoal !== '-' ? `(Soal: ${item.nomorSoal})` : ''}
+               </div>`
+            : '';
+
+          html += `
+            <div class="feed-item">
+              <div class="feed-header">
+                <div>
+                  <strong>${item.nama}</strong> <span style="font-size:12px; color:var(--text-muted);">(${item.waktu}) &bull; ID: ${item.id}</span>
+                </div>
+                <span class="badge-kategori">${item.kategori}</span>
+              </div>
+              ${infoMapel}
+              <div style="font-size:14px; margin-bottom:10px; white-space:pre-line;">${item.pesan}</div>
+              <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center; background:var(--surface-bg); padding:10px; border-radius:10px;">
+                <select id="adm-status-${item.id}" class="cbt-input" style="width:auto; padding:8px 12px; font-size:13px;">
+                  <option value="Menunggu Tanggapan" ${item.status === 'Menunggu Tanggapan' ? 'selected' : ''}>Menunggu Tanggapan</option>
+                  <option value="Sudah Diperbaiki" ${item.status === 'Sudah Diperbaiki' ? 'selected' : ''}>Sudah Diperbaiki</option>
+                  <option value="Sudah Ditanggapi" ${item.status === 'Sudah Ditanggapi' ? 'selected' : ''}>Sudah Ditanggapi</option>
+                </select>
+                <input type="text" id="adm-balas-${item.id}" class="cbt-input" style="flex:1; min-width:180px; padding:8px 12px; font-size:13px;" placeholder="Tulis balasan admin/guru..." value="${item.balasan || ''}">
+                <button class="icon-btn" style="background:var(--primary); color:#fff; border:none; padding:9px 14px;" onclick="simpanBalasanAdmin('${item.id}')">
+                  <i class="fa-solid fa-paper-plane"></i> Simpan
+                </button>
+              </div>
+            </div>`;
+        });
+        container.innerHTML = html;
+      } catch (e) {
+        container.innerHTML = '<div style="color:var(--danger);">Gagal memuat data interaksi.</div>';
+      }
+    }
+
+    async function simpanBalasanAdmin(idPesan) {
+      const status = document.getElementById(`adm-status-${idPesan}`).value;
+      const balasan = document.getElementById(`adm-balas-${idPesan}`).value.trim();
+
+      Swal.fire({ title: 'Menyimpan Tanggapan...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+      try {
+        await callApi('balasSaranKoreksiAdmin', { idPesan, status, balasan });
+        Swal.fire('Tersimpan', 'Status dan balasan berhasil diperbarui.', 'success');
+        muatDaftarInteraksiAdmin();
+      } catch (e) {
+        Swal.fire('Gagal', 'Tidak dapat menyimpan tanggapan.', 'error');
       }
     }
 
