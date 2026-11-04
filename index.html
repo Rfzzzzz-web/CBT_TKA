@@ -640,6 +640,20 @@
       font-size: 13.5px;
     }
 
+    /* TABEL TOKEN MATERI DI ADMIN */
+    .token-materi-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 12px;
+      border-bottom: 1px solid var(--border-color);
+      flex-wrap: wrap;
+    }
+    .token-materi-row:last-child {
+      border-bottom: none;
+    }
+
     /* ADMIN TABS */
     .admin-tab {
       display: inline-block;
@@ -817,8 +831,8 @@
         </select>
       </div>
       <div class="form-group">
-        <label><i class="fa-solid fa-key"></i> Token Akses:</label>
-        <input type="password" id="siswa-token" class="cbt-input" placeholder="Masukkan token ujian...">
+        <label><i class="fa-solid fa-key"></i> Token Akses Materi:</label>
+        <input type="password" id="siswa-token" class="cbt-input" placeholder="Masukkan token sesuai materi ujian...">
       </div>
 
       <button class="btn-action" onclick="mulaiMasukUjian()">
@@ -862,7 +876,7 @@
       </div>
     </div>
 
-    <!-- HALAMAN BARU: INTERAKSI PENGGUNA (SARAN & KOREKSI SOAL) -->
+    <!-- HALAMAN INTERAKSI PENGGUNA (SARAN & KOREKSI SOAL) -->
     <div id="page-interaksi" style="display:none;">
       <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; margin-bottom:18px;">
         <div>
@@ -895,7 +909,6 @@
             </select>
           </div>
 
-          <!-- Box Detail Soal (Tampil jika kategori = Koreksi Soal) -->
           <div id="box-detail-koreksi-soal">
             <div class="form-group">
               <label>Mata Pelajaran Terkait:</label>
@@ -1042,36 +1055,64 @@
       </div>
 
       <div style="margin:18px 0; border-bottom:1px solid var(--border-color); display:flex; flex-wrap:wrap; gap:4px;">
-        <span class="admin-tab active" id="tab-btn-pengaturan" onclick="switchAdminTab('pengaturan')">Identitas & Token</span>
+        <span class="admin-tab active" id="tab-btn-pengaturan" onclick="switchAdminTab('pengaturan')">Identitas & Token Materi</span>
         <span class="admin-tab" id="tab-btn-gambar" onclick="switchAdminTab('edit-gambar')">Sematkan Gambar</span>
         <span class="admin-tab" id="tab-btn-interaksi" onclick="switchAdminTab('interaksi')">Kotak Saran & Koreksi</span>
       </div>
 
-      <!-- Tab 1: Identitas & Token -->
+      <!-- Tab 1: Identitas & Token per Materi -->
       <div id="tab-admin-pengaturan">
-        <div class="form-group">
-          <label>Nama Sekolah:</label>
-          <input type="text" id="adm-nama" class="cbt-input">
+        <div style="background:var(--card-bg); padding:18px; border-radius:16px; border:1px solid var(--border-color); margin-bottom:20px;">
+          <h3 style="margin:0 0 14px 0; font-size:16px;"><i class="fa-solid fa-school"></i> Pengaturan Umum Sekolah</h3>
+          <div class="form-group">
+            <label>Nama Sekolah:</label>
+            <input type="text" id="adm-nama" class="cbt-input">
+          </div>
+          <div class="form-group">
+            <label>Durasi Ujian (Menit):</label>
+            <input type="number" id="adm-durasi" class="cbt-input" placeholder="Contoh: 60" min="1">
+          </div>
+          <div class="form-group">
+            <label>Token Cadangan Default (Dipakai jika materi baru belum diatur tokennya):</label>
+            <input type="text" id="adm-token" class="cbt-input">
+          </div>
+          <div class="form-group">
+            <label>Upload Logo Sekolah (Opsional):</label>
+            <input type="file" id="adm-file-logo" accept="image/*" class="cbt-input">
+          </div>
+          <button class="btn-action" onclick="simpanPengaturan()"><i class="fa-solid fa-floppy-disk"></i> Simpan Pengaturan Umum</button>
         </div>
-        <div class="form-group">
-          <label>Durasi Ujian (Menit):</label>
-          <input type="number" id="adm-durasi" class="cbt-input" placeholder="Contoh: 60" min="1">
-        </div>
-        <div class="form-group">
-          <label>Token Ujian Aktif:</label>
-          <input type="text" id="adm-token" class="cbt-input">
-        </div>
-        <div class="form-group">
-          <label>Upload Logo Sekolah (Opsional):</label>
-          <input type="file" id="adm-file-logo" accept="image/*" class="cbt-input">
-        </div>
-        <button class="btn-action" onclick="simpanPengaturan()"><i class="fa-solid fa-floppy-disk"></i> Simpan Pengaturan</button>
 
-        <hr style="border:none; border-top:1px solid var(--border-color); margin:24px 0;">
+        <!-- Bagian Pengaturan Token Spesifik per Mata Pelajaran & Materi -->
+        <div style="background:var(--card-bg); padding:18px; border-radius:16px; border:1px solid var(--border-color); margin-bottom:20px;">
+          <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; margin-bottom:12px;">
+            <div>
+              <h3 style="margin:0; font-size:16px;"><i class="fa-solid fa-key" style="color:var(--primary);"></i> Token Akses per Mata Pelajaran & Materi</h3>
+              <p style="margin:4px 0 0 0; font-size:12.5px; color:var(--text-muted);">Atur token ujian yang berbeda-beda untuk setiap Mata Pelajaran dan Materi.</p>
+            </div>
+            <div style="display:flex; gap:8px;">
+              <button type="button" class="icon-btn" style="padding:7px 12px; font-size:12.5px;" onclick="acakSemuaTokenMateri()">
+                <i class="fa-solid fa-dice"></i> Acak Semua Token
+              </button>
+              <button type="button" class="icon-btn" style="padding:7px 12px; font-size:12.5px;" onclick="muatDaftarTokenMateriAdmin()">
+                <i class="fa-solid fa-rotate"></i> Segarkan
+              </button>
+            </div>
+          </div>
+
+          <div id="admin-token-materi-container" style="border:1px solid var(--border-color); border-radius:12px; overflow:hidden; margin-bottom:12px;">
+            <div style="padding:15px; color:var(--text-muted); font-size:13px;">Memuat daftar token per materi...</div>
+          </div>
+
+          <button class="btn-action" style="background:var(--success);" onclick="simpanSemuaTokenMateri()">
+            <i class="fa-solid fa-check-double"></i> Simpan Token Semua Materi
+          </button>
+        </div>
+
         <div style="background:var(--primary-soft); padding:14px 16px; border-radius:12px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
           <div>
             <div style="font-weight:700; font-size:14px;">Sinkronisasi Struktur Spreadsheet</div>
-            <div style="font-size:12.5px; color:var(--text-muted);">Otomatis siapkan kolom <code>Mata_Pelajaran</code> & sheet <code>SaranKoreksi</code> jika belum ada.</div>
+            <div style="font-size:12.5px; color:var(--text-muted);">Otomatis siapkan kolom <code>Mata_Pelajaran</code>, sheet <code>TokenMateri</code> & <code>SaranKoreksi</code>.</div>
           </div>
           <button type="button" class="icon-btn" onclick="jalankanMigrasiSpreadsheet()">
             <i class="fa-solid fa-table-columns"></i> Perbarui Struktur Sheet
@@ -1144,6 +1185,7 @@
     let waktuSelesaiTimestamp = 0;
     let activeMapel = '';
     let activeMateri = '';
+    let adminTokenMateriList = [];
 
     // Fungsi Helper Pemanggil API (Mendukung GitHub Pages via Fetch maupun GAS HtmlService)
     async function callApi(action, data = {}) {
@@ -1161,6 +1203,8 @@
           else if (action === 'getDaftarSaranKoreksi') runner.getDaftarSaranKoreksi();
           else if (action === 'balasSaranKoreksiAdmin') runner.balasSaranKoreksiAdmin(data.idPesan, data.status, data.balasan);
           else if (action === 'loginAdmin') runner.loginAdmin(data.pin);
+          else if (action === 'getDaftarTokenMateriAdmin') runner.getDaftarTokenMateriAdmin();
+          else if (action === 'simpanTokenMateriAdmin') runner.simpanTokenMateriAdmin(data.listToken);
           else if (action === 'simpanPengaturanAdmin') runner.simpanPengaturanAdmin(data.nama, data.logoBase64, data.token, data.durasi);
           else if (action === 'getDaftarIdSoal') runner.getDaftarIdSoal();
           else if (action === 'pasangGambarKeBanyakSoal') runner.pasangGambarKeBanyakSoal(data.selectedIds, data.gambarBase64);
@@ -1234,7 +1278,6 @@
 
         const listMapel = data.daftarMapel || [];
 
-        // Isi dropdown Mapel di Portal Login
         const selMapel = document.getElementById('siswa-mapel');
         const selMateri = document.getElementById('siswa-materi');
         selMapel.innerHTML = '<option value="">-- Pilih Mata Pelajaran --</option>';
@@ -1244,14 +1287,12 @@
         selMateri.innerHTML = '<option value="">-- Pilih Mata Pelajaran Dahulu --</option>';
         selMateri.disabled = true;
 
-        // Isi dropdown Mapel di Halaman Ranking
         const rankMapel = document.getElementById('rank-mapel');
         rankMapel.innerHTML = '<option value="">-- Pilih Mata Pelajaran --</option>';
         listMapel.forEach(mp => {
           rankMapel.innerHTML += `<option value="${mp}">${mp}</option>`;
         });
 
-        // Isi dropdown Mapel di Halaman Interaksi
         const interMapel = document.getElementById('interaksi-mapel');
         interMapel.innerHTML = '<option value="-">-- Pilih Mata Pelajaran --</option>';
         listMapel.forEach(mp => {
@@ -1262,7 +1303,6 @@
       }
     }
 
-    // Filter Kategori Materi berdasarkan Mata Pelajaran di Portal Login
     function onMapelChange() {
       const mapelDipilih = document.getElementById('siswa-mapel').value;
       const selMateri = document.getElementById('siswa-materi');
@@ -1625,7 +1665,7 @@
       }
     }
 
-    // Masuk Ujian
+    // Masuk Ujian (Validasi Token Spesifik per Mata Pelajaran & Materi)
     async function mulaiMasukUjian() {
       const nama = document.getElementById('siswa-nama').value.trim();
       const iden = document.getElementById('siswa-identitas').value.trim();
@@ -1638,12 +1678,12 @@
         return;
       }
 
-      Swal.fire({ title: 'Memvalidasi & Memuat Soal...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+      Swal.fire({ title: 'Memvalidasi Token Materi & Memuat Soal...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
 
       try {
         const res = await callApi('mulaiUjian', { token, mapel, materi });
         if (!res.valid) {
-          Swal.fire('Gagal', 'Token ujian tidak valid!', 'error');
+          Swal.fire('Token Tidak Sesuai', `Token akses untuk materi "${mapel} - ${materi}" tidak valid!`, 'error');
           return;
         }
         if (!res.soal || res.soal.length === 0) {
@@ -2043,7 +2083,7 @@
     }
 
     // =========================================================================
-    // LOGIKA ADMIN PANEL
+    // LOGIKA ADMIN PANEL & TOKEN PER MAPEL-MATERI
     // =========================================================================
     function kompresGambar(file, callback) {
       const reader = new FileReader();
@@ -2092,6 +2132,12 @@
               document.getElementById('adm-nama').value = appConfig.namaSekolah || '';
               document.getElementById('adm-token').value = authRes.tokenUjian || '';
               document.getElementById('adm-durasi').value = appConfig.durasiUjian || 60;
+              if (authRes.daftarTokenMateri) {
+                adminTokenMateriList = authRes.daftarTokenMateri;
+                renderDaftarTokenMateriAdmin();
+              } else {
+                muatDaftarTokenMateriAdmin();
+              }
               muatDaftarSoalAdmin();
               muatDaftarInteraksiAdmin();
             } else {
@@ -2102,6 +2148,86 @@
           }
         }
       });
+    }
+
+    async function muatDaftarTokenMateriAdmin() {
+      const container = document.getElementById('admin-token-materi-container');
+      container.innerHTML = '<div style="padding:15px; color:var(--text-muted); font-size:13px;">Memuat daftar token per materi...</div>';
+      try {
+        const list = await callApi('getDaftarTokenMateriAdmin');
+        adminTokenMateriList = list || [];
+        renderDaftarTokenMateriAdmin();
+      } catch (e) {
+        container.innerHTML = '<div style="padding:15px; color:var(--danger); font-size:13px;">Gagal memuat daftar token materi.</div>';
+      }
+    }
+
+    function renderDaftarTokenMateriAdmin() {
+      const container = document.getElementById('admin-token-materi-container');
+      if (!adminTokenMateriList || adminTokenMateriList.length === 0) {
+        container.innerHTML = '<div style="padding:15px; color:var(--text-muted); font-size:13px;">Belum ada kombinasi Mata Pelajaran & Materi di Sheet BankSoal.</div>';
+        return;
+      }
+
+      let html = '';
+      adminTokenMateriList.forEach((item, idx) => {
+        html += `
+          <div class="token-materi-row">
+            <div style="flex:1; min-width:180px;">
+              <span class="badge-kategori" style="margin-right:6px;">${item.mapel}</span>
+              <strong style="font-size:14.5px;">${item.materi}</strong>
+            </div>
+            <div style="display:flex; gap:8px; align-items:center;">
+              <input type="text" id="tok-mat-${idx}" class="cbt-input" style="width:150px; padding:8px 12px; font-weight:700; letter-spacing:1px; text-align:center;" value="${item.token || ''}" placeholder="Token...">
+              <button type="button" class="icon-btn" style="padding:8px 12px; font-size:12.5px;" onclick="acakSatuTokenMateri(${idx})" title="Buat Token Acak">
+                <i class="fa-solid fa-dice"></i>
+              </button>
+            </div>
+          </div>`;
+      });
+      container.innerHTML = html;
+    }
+
+    function buatStringTokenAcak() {
+      const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+      let res = '';
+      for (let i = 0; i < 6; i++) {
+        res += chars.charAt(Math.floor(Math.random() * chars.length));
+      }
+      return res;
+    }
+
+    function acakSatuTokenMateri(idx) {
+      const el = document.getElementById(`tok-mat-${idx}`);
+      if (el) el.value = buatStringTokenAcak();
+    }
+
+    function acakSemuaTokenMateri() {
+      adminTokenMateriList.forEach((_, idx) => acakSatuTokenMateri(idx));
+    }
+
+    async function simpanSemuaTokenMateri() {
+      const payloadList = adminTokenMateriList.map((item, idx) => {
+        const el = document.getElementById(`tok-mat-${idx}`);
+        return {
+          mapel: item.mapel,
+          materi: item.materi,
+          token: el ? el.value.trim() : item.token
+        };
+      });
+
+      Swal.fire({ title: 'Menyimpan Token Materi...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+      try {
+        const res = await callApi('simpanTokenMateriAdmin', { listToken: payloadList });
+        if (res.status === 'success') {
+          adminTokenMateriList = payloadList;
+          Swal.fire('Berhasil!', `Token untuk ${res.total} materi berhasil disimpan ke Sheet TokenMateri.`, 'success');
+        } else {
+          Swal.fire('Gagal', res.pesan || 'Gagal menyimpan token.', 'error');
+        }
+      } catch (e) {
+        Swal.fire('Gagal', 'Tidak dapat menghubungi server.', 'error');
+      }
     }
 
     function tutupAdmin() {
@@ -2194,6 +2320,7 @@
         const res = await callApi('migrasiSpreadsheet');
         Swal.fire('Berhasil!', res.pesan || 'Struktur Spreadsheet berhasil diperbarui.', 'success');
         muatInisialisasi();
+        muatDaftarTokenMateriAdmin();
       } catch (e) {
         Swal.fire('Gagal', 'Tidak dapat memperbarui struktur Spreadsheet.', 'error');
       }
@@ -2237,8 +2364,7 @@
       const kirimKeServer = async function(logoBase64) {
         try {
           await callApi('simpanPengaturanAdmin', { nama, logoBase64, token, durasi });
-          Swal.fire('Sukses', 'Pengaturan dan durasi berhasil diperbarui.', 'success');
-          tutupAdmin();
+          Swal.fire('Sukses', 'Pengaturan umum berhasil diperbarui.', 'success');
           muatInisialisasi();
         } catch (e) {
           Swal.fire('Gagal', 'Tidak dapat menyimpan pengaturan.', 'error');
