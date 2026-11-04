@@ -631,6 +631,10 @@
       background: rgba(22, 163, 74, 0.15);
       color: var(--success);
     }
+    .badge-status.gagal {
+      background: rgba(220, 38, 38, 0.15);
+      color: var(--danger);
+    }
     .admin-reply-box {
       margin-top: 10px;
       padding: 10px 14px;
@@ -640,7 +644,7 @@
       font-size: 13.5px;
     }
 
-    /* TABEL TOKEN MATERI DI ADMIN */
+    /* TABEL TOKEN MATERI & STATISTIK LOG DI ADMIN */
     .token-materi-row {
       display: flex;
       justify-content: space-between;
@@ -652,6 +656,30 @@
     }
     .token-materi-row:last-child {
       border-bottom: none;
+    }
+
+    .stat-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 12px;
+      margin-bottom: 18px;
+    }
+    .stat-card {
+      background: var(--card-bg);
+      padding: 14px 16px;
+      border-radius: 14px;
+      border: 1px solid var(--border-color);
+    }
+    .stat-val {
+      font-size: 24px;
+      font-weight: 800;
+      color: var(--primary);
+      margin-top: 4px;
+    }
+    .stat-label {
+      font-size: 12px;
+      color: var(--text-muted);
+      font-weight: 600;
     }
 
     /* ADMIN TABS */
@@ -718,6 +746,9 @@
       .ranking-filter-grid,
       .interaksi-grid {
         grid-template-columns: 1fr;
+      }
+      .stat-grid {
+        grid-template-columns: repeat(2, 1fr);
       }
 
       /* Navigasi Bawah Menempel di Layar Bawah HP */
@@ -1058,6 +1089,7 @@
         <span class="admin-tab active" id="tab-btn-pengaturan" onclick="switchAdminTab('pengaturan')">Identitas & Token Materi</span>
         <span class="admin-tab" id="tab-btn-gambar" onclick="switchAdminTab('edit-gambar')">Sematkan Gambar</span>
         <span class="admin-tab" id="tab-btn-interaksi" onclick="switchAdminTab('interaksi')">Kotak Saran & Koreksi</span>
+        <span class="admin-tab" id="tab-btn-log" onclick="switchAdminTab('log-akses')">Log Pengunjung & Aktivitas</span>
       </div>
 
       <!-- Tab 1: Identitas & Token per Materi -->
@@ -1112,7 +1144,7 @@
         <div style="background:var(--primary-soft); padding:14px 16px; border-radius:12px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
           <div>
             <div style="font-weight:700; font-size:14px;">Sinkronisasi Struktur Spreadsheet</div>
-            <div style="font-size:12.5px; color:var(--text-muted);">Otomatis siapkan kolom <code>Mata_Pelajaran</code>, sheet <code>TokenMateri</code> & <code>SaranKoreksi</code>.</div>
+            <div style="font-size:12.5px; color:var(--text-muted);">Otomatis siapkan kolom <code>Mata_Pelajaran</code>, sheet <code>TokenMateri</code>, <code>SaranKoreksi</code> & <code>LogAkses</code>.</div>
           </div>
           <button type="button" class="icon-btn" onclick="jalankanMigrasiSpreadsheet()">
             <i class="fa-solid fa-table-columns"></i> Perbarui Struktur Sheet
@@ -1162,6 +1194,40 @@
           <div style="color:var(--text-muted); font-size:13px;">Memuat data saran & koreksi...</div>
         </div>
       </div>
+
+      <!-- Tab 4: Log Pengunjung & Aktivitas Portal -->
+      <div id="tab-admin-log" style="display:none;">
+        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; margin-bottom:14px;">
+          <p style="font-size:14px; color:var(--text-muted); margin:0;">
+            Pantau siapa saja yang membuka portal, memulai ujian, gagal memasukkan token, hingga jenis perangkat yang dipakai.
+          </p>
+          <button class="icon-btn" onclick="muatLogAksesAdmin()"><i class="fa-solid fa-rotate"></i> Segarkan Log</button>
+        </div>
+
+        <!-- Ringkasan Statistik Kunjungan -->
+        <div class="stat-grid">
+          <div class="stat-card">
+            <div class="stat-label"><i class="fa-solid fa-eye"></i> Kunjungan Portal</div>
+            <div class="stat-val" id="stat-kunjungan">0</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label"><i class="fa-solid fa-mobile-screen"></i> Perangkat Unik</div>
+            <div class="stat-val" id="stat-perangkat">0</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label"><i class="fa-solid fa-pen-to-square"></i> Sesi Mulai Ujian</div>
+            <div class="stat-val" id="stat-ujian" style="color:var(--success);">0</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label"><i class="fa-solid fa-circle-xmark"></i> Gagal Token</div>
+            <div class="stat-val" id="stat-gagal" style="color:var(--danger);">0</div>
+          </div>
+        </div>
+
+        <div id="admin-log-container">
+          <div style="color:var(--text-muted); font-size:13px;">Memuat riwayat akses portal...</div>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -1171,6 +1237,7 @@
     // =========================================================================
     const GAS_API_URL = 'https://script.google.com/macros/s/AKfycbzIkSF5CMUSv9qorJN711OdeQNQKZxZ0t90aytCzZKQDIZ2iQb7VJF8poQ89OJneV1a3g/exec';
     const STORAGE_KEY = 'CBT_TKA_ACTIVE_SESSION';
+    const DEVICE_KEY = 'CBT_TKA_DEVICE_ID';
 
     let appConfig = {};
     let soalList = [];
@@ -1187,6 +1254,35 @@
     let activeMateri = '';
     let adminTokenMateriList = [];
 
+    // Identifikasi Perangkat Unik & Info Browser/HP Pengguna
+    function getOrCreateDeviceId() {
+      let devId = localStorage.getItem(DEVICE_KEY);
+      if (!devId) {
+        const rand = Math.random().toString(36).substring(2, 8).toUpperCase();
+        devId = 'DEV-' + rand;
+        localStorage.setItem(DEVICE_KEY, devId);
+      }
+      return devId;
+    }
+
+    function getDeviceInfoRingkas() {
+      const ua = navigator.userAgent || '';
+      let os = 'Perangkat Lain';
+      if (/android/i.test(ua)) os = 'HP Android';
+      else if (/iPad|iPhone|iPod/.test(ua)) os = 'iPhone/iPad';
+      else if (/Windows/i.test(ua)) os = 'Laptop/PC Windows';
+      else if (/Macintosh|Mac OS/i.test(ua)) os = 'MacBook/iMac';
+      else if (/Linux/i.test(ua)) os = 'Linux';
+
+      let browser = 'Browser';
+      if (/Edg\//i.test(ua)) browser = 'Edge';
+      else if (/Chrome\//i.test(ua)) browser = 'Chrome';
+      else if (/Firefox\//i.test(ua)) browser = 'Firefox';
+      else if (/Safari\//i.test(ua)) browser = 'Safari';
+
+      return `${os} (${browser}, ${window.innerWidth}x${window.innerHeight})`;
+    }
+
     // Fungsi Helper Pemanggil API (Mendukung GitHub Pages via Fetch maupun GAS HtmlService)
     async function callApi(action, data = {}) {
       if (typeof google !== 'undefined' && google.script && google.script.run) {
@@ -1195,8 +1291,10 @@
             .withSuccessHandler(resolve)
             .withFailureHandler(reject);
 
-          if (action === 'getInisialisasiApp') runner.getInisialisasiApp();
-          else if (action === 'mulaiUjian') runner.mulaiUjianServer(data.token, data.mapel, data.materi);
+          if (action === 'getInisialisasiApp') runner.getInisialisasiApp(data);
+          else if (action === 'catatLog') runner.catatLogAktivitas(data);
+          else if (action === 'getLogAksesAdmin') runner.getLogAksesAdmin();
+          else if (action === 'mulaiUjian') runner.mulaiUjianServer(data.token, data.mapel, data.materi, data);
           else if (action === 'submitUjian') runner.submitUjian(data.payload);
           else if (action === 'getRanking') runner.getRanking(data.mapel, data.materi);
           else if (action === 'kirimSaranKoreksi') runner.kirimSaranKoreksi(data.payload);
@@ -1271,7 +1369,15 @@
 
     async function muatInisialisasi() {
       try {
-        const data = await callApi('getInisialisasiApp');
+        // Catat kunjungan baru sekali per sesi tab dibuka
+        const belumLogKunjungan = !sessionStorage.getItem('CBT_VISIT_LOGGED');
+        if (belumLogKunjungan) sessionStorage.setItem('CBT_VISIT_LOGGED', '1');
+
+        const data = await callApi('getInisialisasiApp', {
+          logVisit: belumLogKunjungan,
+          perangkat: getDeviceInfoRingkas(),
+          deviceId: getOrCreateDeviceId()
+        });
         appConfig = data;
         document.getElementById('display-school-name').innerText = data.namaSekolah || 'SD NEGERI 4 SUCI';
         if (data.logoSekolah) document.getElementById('display-logo').src = data.logoSekolah;
@@ -1665,7 +1771,7 @@
       }
     }
 
-    // Masuk Ujian (Validasi Token Spesifik per Mata Pelajaran & Materi)
+    // Masuk Ujian (Validasi Token Spesifik per Mata Pelajaran & Materi + Log Akses)
     async function mulaiMasukUjian() {
       const nama = document.getElementById('siswa-nama').value.trim();
       const iden = document.getElementById('siswa-identitas').value.trim();
@@ -1681,7 +1787,15 @@
       Swal.fire({ title: 'Memvalidasi Token Materi & Memuat Soal...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
 
       try {
-        const res = await callApi('mulaiUjian', { token, mapel, materi });
+        const res = await callApi('mulaiUjian', {
+          token,
+          mapel,
+          materi,
+          nama,
+          identitas: iden,
+          perangkat: getDeviceInfoRingkas(),
+          deviceId: getOrCreateDeviceId()
+        });
         if (!res.valid) {
           Swal.fire('Token Tidak Sesuai', `Token akses untuk materi "${mapel} - ${materi}" tidak valid!`, 'error');
           return;
@@ -2041,7 +2155,9 @@
         mapel: activeMapel,
         materi: activeMateri,
         jawaban: jawabanPeserta,
-        pelanggaran: jumlahPelanggaran
+        pelanggaran: jumlahPelanggaran,
+        perangkat: getDeviceInfoRingkas(),
+        deviceId: getOrCreateDeviceId()
       };
 
       try {
@@ -2083,7 +2199,7 @@
     }
 
     // =========================================================================
-    // LOGIKA ADMIN PANEL & TOKEN PER MAPEL-MATERI
+    // LOGIKA ADMIN PANEL, TOKEN MATERI & LOG PENGUNJUNG
     // =========================================================================
     function kompresGambar(file, callback) {
       const reader = new FileReader();
@@ -2240,6 +2356,7 @@
       document.getElementById('tab-admin-pengaturan').style.display = 'none';
       document.getElementById('tab-admin-gambar').style.display = 'none';
       document.getElementById('tab-admin-interaksi').style.display = 'none';
+      document.getElementById('tab-admin-log').style.display = 'none';
 
       if (tab === 'pengaturan') {
         document.getElementById('tab-btn-pengaturan').classList.add('active');
@@ -2251,6 +2368,61 @@
         document.getElementById('tab-btn-interaksi').classList.add('active');
         document.getElementById('tab-admin-interaksi').style.display = 'block';
         muatDaftarInteraksiAdmin();
+      } else if (tab === 'log-akses') {
+        document.getElementById('tab-btn-log').classList.add('active');
+        document.getElementById('tab-admin-log').style.display = 'block';
+        muatLogAksesAdmin();
+      }
+    }
+
+    async function muatLogAksesAdmin() {
+      const container = document.getElementById('admin-log-container');
+      container.innerHTML = '<div style="color:var(--text-muted); font-size:13px;">Memuat riwayat akses portal...</div>';
+      try {
+        const res = await callApi('getLogAksesAdmin');
+        const r = res.ringkasan || {};
+        document.getElementById('stat-kunjungan').innerText = r.totalKunjungan || 0;
+        document.getElementById('stat-perangkat').innerText = r.perangkatUnik || 0;
+        document.getElementById('stat-ujian').innerText = r.sedangUjian || 0;
+        document.getElementById('stat-gagal').innerText = r.gagalToken || 0;
+
+        const logs = res.logs || [];
+        if (logs.length === 0) {
+          container.innerHTML = '<div style="padding:15px; color:var(--text-muted);">Belum ada catatan log akses.</div>';
+          return;
+        }
+
+        let html = '';
+        logs.forEach(item => {
+          let badgeCls = 'menunggu';
+          if (item.aktivitas === 'Mulai Ujian' || item.aktivitas === 'Selesai Ujian') badgeCls = 'selesai';
+          else if (item.aktivitas === 'Gagal Token') badgeCls = 'gagal';
+
+          const infoMateri = (item.mapel && item.mapel !== '-')
+            ? `<span style="margin-right:10px;"><i class="fa-solid fa-book"></i> ${item.mapel} - ${item.materi}</span>`
+            : '';
+
+          html += `
+            <div class="feed-item" style="padding:12px 16px; margin-bottom:8px;">
+              <div class="feed-header" style="margin-bottom:4px;">
+                <div>
+                  <strong>${item.nama}</strong>
+                  ${item.identitas && item.identitas !== '-' ? `<span style="font-size:12.5px; color:var(--text-muted);">(${item.identitas})</span>` : ''}
+                  <span style="font-size:12px; color:var(--text-muted); margin-left:6px;"><i class="fa-regular fa-clock"></i> ${item.waktu}</span>
+                </div>
+                <span class="badge-status ${badgeCls}">${item.aktivitas}</span>
+              </div>
+              <div style="font-size:12.5px; color:var(--text-muted); display:flex; flex-wrap:wrap; gap:8px; margin-bottom:4px;">
+                ${infoMateri}
+                <span><i class="fa-solid fa-laptop-mobile"></i> ${item.perangkat}</span>
+                <span><i class="fa-solid fa-fingerprint"></i> ID: <code>${item.deviceId}</code></span>
+              </div>
+              <div style="font-size:13px; color:var(--text-main);">${item.keterangan}</div>
+            </div>`;
+        });
+        container.innerHTML = html;
+      } catch (e) {
+        container.innerHTML = '<div style="color:var(--danger);">Gagal memuat log akses.</div>';
       }
     }
 
