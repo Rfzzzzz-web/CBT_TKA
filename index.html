@@ -164,6 +164,7 @@
 
     /* PORTAL LOGIN */
     .portal-box {
+      width: 100%;
       max-width: 480px;
       margin: 0 auto;
     }
@@ -745,12 +746,10 @@
        OPTIMASI LAYAR LEBAR: TABLET LANDSCAPE & LAPTOP (LAYAR >= 821px)
        ===================================================================== */
     @media (min-width: 821px) {
-      #page-portal {
-        margin: auto 0;
-        padding: 12px 0 28px 0;
-      }
-      .portal-box {
+      #page-portal.portal-box {
+        width: 100%;
         max-width: 540px;
+        margin: auto;
         background: var(--card-bg);
         padding: 32px 34px;
         border-radius: 20px;
