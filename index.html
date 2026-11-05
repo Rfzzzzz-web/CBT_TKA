@@ -1247,6 +1247,7 @@
     let jumlahPelanggaran = 0;
     const MAKS_PELANGGARAN = 3;
     let ujianAktif = false;
+    let sedangMengirim = false;
     let timerInterval = null;
     let sisaDetik = 0;
     let waktuSelesaiTimestamp = 0;
@@ -1722,14 +1723,16 @@
       try {
         const sesi = JSON.parse(raw);
         const sisa = Math.floor((sesi.waktuSelesaiTimestamp - Date.now()) / 1000);
-        if (sisa > 5 && sesi.soalList && sesi.soalList.length > 0) {
+        const pelanggaranTersimpan = Number(sesi.jumlahPelanggaran) || 0;
+        // Cegah pemulihan sesi jika sudah mencapai batas pelanggaran (3 kali) atau waktu habis
+        if (sisa > 5 && pelanggaranTersimpan < MAKS_PELANGGARAN && sesi.soalList && sesi.soalList.length > 0) {
           document.getElementById('siswa-nama').value = sesi.nama || '';
           document.getElementById('siswa-identitas').value = sesi.identitas || '';
           soalList = sesi.soalList;
           currentIndex = sesi.currentIndex || 0;
           jawabanPeserta = sesi.jawabanPeserta || {};
           statusRagu = sesi.statusRagu || {};
-          jumlahPelanggaran = sesi.jumlahPelanggaran || 0;
+          jumlahPelanggaran = pelanggaranTersimpan;
           waktuSelesaiTimestamp = sesi.waktuSelesaiTimestamp;
           activeMapel = sesi.mapel || '';
           activeMateri = sesi.materi || '';
@@ -1822,6 +1825,7 @@
       document.getElementById('peserta-info').innerHTML = `<i class="fa-solid fa-user-graduate"></i> <span>${nama} (${iden}) &bull; ${mapel} - ${materi}</span>`;
       
       ujianAktif = true;
+      sedangMengirim = false;
       if (!isRestore) {
         currentIndex = 0;
         jawabanPeserta = {};
@@ -2123,21 +2127,15 @@
 
     // Deteksi Pindah Tab / Aplikasi (Anti-Curang)
     document.addEventListener("visibilitychange", () => {
-      if (document.visibilityState === 'hidden' && ujianAktif) {
-        jumlahPelanggaran++;
-        simpanSesiLokal();
+      if (document.visibilityState === 'hidden' && ujianAktif && !sedangMengirim) {
+        jumlahPelanggaran = Math.min(jumlahPelanggaran + 1, MAKS_PELANGGARAN);
         document.getElementById('pelanggaran-count').innerText = `${jumlahPelanggaran}/${MAKS_PELANGGARAN}`;
         if (jumlahPelanggaran >= MAKS_PELANGGARAN) {
           ujianAktif = false;
-          Swal.fire({
-            icon: 'error',
-            title: 'Ujian Dihentikan!',
-            text: 'Batas toleransi perpindahan tab/aplikasi habis. Jawaban Anda otomatis dikirim.',
-            allowOutsideClick: false,
-            showConfirmButton: false,
-            timer: 2500
-          }).then(() => kirimJawabanFinal());
+          hapusSesiLokal(); // Langsung hapus sesi lokal agar tidak bisa di-refresh untuk lanjut ujian
+          kirimJawabanFinal(true);
         } else {
+          simpanSesiLokal();
           Swal.fire('Peringatan!', `Dilarang keluar dari halaman ujian! Pelanggaran ke-${jumlahPelanggaran} dari ${MAKS_PELANGGARAN}.`, 'warning');
         }
       }
@@ -2163,12 +2161,20 @@
       });
     }
 
-    async function kirimJawabanFinal() {
+    async function kirimJawabanFinal(karenaPelanggaran = false) {
+      if (sedangMengirim) return;
+      sedangMengirim = true;
       ujianAktif = false;
       if (timerInterval) clearInterval(timerInterval);
       hapusSesiLokal();
 
-      Swal.fire({ title: 'Menyimpan & Menilai...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+      Swal.fire({
+        icon: karenaPelanggaran ? 'error' : undefined,
+        title: karenaPelanggaran ? 'Ujian Dihentikan! Menyimpan Jawaban...' : 'Menyimpan & Menilai...',
+        text: karenaPelanggaran ? 'Batas toleransi perpindahan tab/aplikasi (3 kali) habis. Jawaban otomatis dikirim.' : undefined,
+        allowOutsideClick: false,
+        didOpen: () => Swal.showLoading()
+      });
       
       const payload = {
         nama: document.getElementById('siswa-nama').value,
@@ -2176,7 +2182,7 @@
         mapel: activeMapel,
         materi: activeMateri,
         jawaban: jawabanPeserta,
-        pelanggaran: jumlahPelanggaran,
+        pelanggaran: Math.min(jumlahPelanggaran, MAKS_PELANGGARAN),
         perangkat: getDeviceInfoRingkas(),
         deviceId: getOrCreateDeviceId()
       };
@@ -2186,6 +2192,7 @@
         Swal.close();
         tampilkanHalamanReview(res, payload);
       } catch (err) {
+        sedangMengirim = false;
         Swal.fire('Gagal Mengirim', 'Terjadi gangguan jaringan. Silakan coba kirim ulang.', 'error');
       }
     }
