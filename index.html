@@ -1999,6 +1999,24 @@
       renderGrid();
     }
 
+    // Pembersih otomatis jika ada teks opsi yang terkirim dalam format Tanggal ISO (misal: 2026-10-17T17:00:00.000Z)
+    function formatTeksOpsi(teks) {
+      if (teks === undefined || teks === null) return '';
+      const str = String(teks).trim();
+      if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?Z$/.test(str)) {
+        const d = new Date(str);
+        if (!isNaN(d.getTime())) {
+          return d.toLocaleDateString('id-ID', {
+            day: 'numeric',
+            month: 'long',
+            year: 'numeric',
+            timeZone: 'Asia/Jakarta'
+          });
+        }
+      }
+      return str;
+    }
+
     function tampilkanSoal(idx) {
       const s = soalList[idx];
       const container = document.getElementById('soal-box-container');
@@ -2016,7 +2034,7 @@
         </div>`;
 
       if (s.Konteks) html += `<div class="konteks-box">${s.Konteks}</div>`;
-      html += `<div class="pertanyaan-teks">${s.Pertanyaan}</div>`;
+      html += `<div class="pertanyaan-teks">${formatTeksOpsi(s.Pertanyaan)}</div>`;
 
       const currentJawab = jawabanPeserta[s.ID_Soal] || '';
 
@@ -2025,10 +2043,11 @@
           if (s['Opsi_' + opt] !== undefined && s['Opsi_' + opt] !== '') {
             const isChecked = currentJawab === opt ? 'checked' : '';
             const selClass = isChecked ? 'selected' : '';
+            const teksOpsi = formatTeksOpsi(s['Opsi_' + opt]);
             html += `
               <label class="opsi-box ${selClass}">
                 <input type="radio" name="opt_${s.ID_Soal}" value="${opt}" ${isChecked} onchange="simpanJawabanAktif()">
-                <div class="opsi-label-text"><strong>${opt}.</strong> ${s['Opsi_' + opt]}</div>
+                <div class="opsi-label-text"><strong>${opt}.</strong> ${teksOpsi}</div>
               </label>`;
           }
         });
@@ -2038,10 +2057,11 @@
           if (s['Opsi_' + opt] !== undefined && s['Opsi_' + opt] !== '') {
             const isChecked = arrJawab.includes(opt) ? 'checked' : '';
             const selClass = isChecked ? 'selected' : '';
+            const teksOpsi = formatTeksOpsi(s['Opsi_' + opt]);
             html += `
               <label class="opsi-box ${selClass}">
                 <input type="checkbox" name="opt_${s.ID_Soal}" value="${opt}" ${isChecked} onchange="simpanJawabanAktif()">
-                <div class="opsi-label-text"><strong>${opt}.</strong> ${s['Opsi_' + opt]}</div>
+                <div class="opsi-label-text"><strong>${opt}.</strong> ${teksOpsi}</div>
               </label>`;
           }
         });
@@ -2063,9 +2083,10 @@
 
         opsiList.forEach((opt, oIdx) => {
           const valSaatIni = arrJawab[oIdx] || '';
+          const teksOpsi = formatTeksOpsi(s['Opsi_' + opt]);
           html += `
             <tr>
-              <td><strong>${opt}.</strong> ${s['Opsi_' + opt]}</td>
+              <td><strong>${opt}.</strong> ${teksOpsi}</td>
               <td class="bs-radio-cell">
                 <input type="radio" name="bs_${s.ID_Soal}_${oIdx}" value="B" ${valSaatIni === 'B' ? 'checked' : ''} onchange="simpanJawabanAktif()">
               </td>
