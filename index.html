@@ -494,6 +494,49 @@
       cursor: pointer;
     }
 
+    /* PROTEKSI ANTI-CHEATING (ANTI SELECT, BLUR SAAT SPLIT SCREEN, & FULLSCREEN LOCK) */
+    #page-ujian {
+      -webkit-user-select: none;
+      -moz-user-select: none;
+      -ms-user-select: none;
+      user-select: none;
+      -webkit-touch-callout: none;
+    }
+    #page-ujian input[type="text"] {
+      -webkit-user-select: text;
+      user-select: text;
+    }
+    .exam-blurred #soal-box-container {
+      filter: blur(12px);
+      pointer-events: none;
+      transition: filter 0.15s ease;
+    }
+    .fullscreen-lock-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(15, 23, 42, 0.92);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      z-index: 9999;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      text-align: center;
+    }
+    .fullscreen-lock-overlay.active {
+      display: flex;
+    }
+    .fullscreen-lock-card {
+      background: var(--card-bg);
+      border: 1.5px solid var(--border-color);
+      border-radius: 20px;
+      padding: 28px 24px;
+      max-width: 440px;
+      width: 100%;
+      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+    }
+
     /* HALAMAN RANKING 10 BESAR */
     .ranking-filter-grid {
       display: grid;
@@ -985,6 +1028,22 @@
 
     <!-- HALAMAN 2: LEMBAR UJIAN CBT -->
     <div id="page-ujian" style="display:none;">
+      <!-- Overlay Pengunci Layar Penuh (Wajib Fullscreen Selama Ujian) -->
+      <div class="fullscreen-lock-overlay" id="fullscreen-lock-overlay">
+        <div class="fullscreen-lock-card">
+          <div style="width:62px; height:62px; border-radius:50%; background:rgba(37, 99, 235, 0.14); color:var(--primary); display:flex; align-items:center; justify-content:center; font-size:26px; margin:0 auto 14px auto;">
+            <i class="fa-solid fa-expand"></i>
+          </div>
+          <h3 style="margin:0 0 8px 0; font-size:19px;">Mode Layar Penuh Wajib Aktif</h3>
+          <p style="margin:0 0 20px 0; font-size:14px; color:var(--text-muted); line-height:1.55;">
+            Demi menjaga kejujuran ujian, lembar soal dikunci sementara karena Anda keluar dari mode layar penuh. Klik tombol di bawah untuk melanjutkan mengerjakan soal.
+          </p>
+          <button class="btn-action" onclick="masukFullscreenUjian()">
+            <i class="fa-solid fa-expand"></i> Aktifkan Layar Penuh & Lanjutkan
+          </button>
+        </div>
+      </div>
+
       <div class="exam-header">
         <div id="peserta-info" class="peserta-badge"></div>
         <div class="exam-status-group">
@@ -1774,6 +1833,71 @@
       }
     }
 
+    // Pengacak urutan nomor soal (Fisher-Yates Shuffle) agar tiap siswa mendapat urutan soal berbeda
+    function acakUrutanSoal(arr) {
+      const salinan = [...arr];
+      for (let i = salinan.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [salinan[i], salinan[j]] = [salinan[j], salinan[i]];
+      }
+      return salinan;
+    }
+
+    // Helper Fullscreen Otomatis & Pengunci Layar Penuh
+    let sedangTransisiFullscreen = false;
+
+    function isFullscreenDidukung() {
+      const el = document.documentElement;
+      return !!(el.requestFullscreen || el.webkitRequestFullscreen || el.msRequestFullscreen);
+    }
+
+    function isSedangFullscreen() {
+      return !!(document.fullscreenElement || document.webkitFullscreenElement || document.msFullscreenElement);
+    }
+
+    async function masukFullscreenUjian() {
+      const overlay = document.getElementById('fullscreen-lock-overlay');
+      if (!isFullscreenDidukung()) {
+        if (overlay) overlay.classList.remove('active');
+        return;
+      }
+      try {
+        sedangTransisiFullscreen = true;
+        const el = document.documentElement;
+        if (!isSedangFullscreen()) {
+          if (el.requestFullscreen) await el.requestFullscreen();
+          else if (el.webkitRequestFullscreen) await el.webkitRequestFullscreen();
+          else if (el.msRequestFullscreen) await el.msRequestFullscreen();
+        }
+        if (overlay) overlay.classList.remove('active');
+      } catch (e) {
+        if (ujianAktif && overlay) overlay.classList.add('active');
+      } finally {
+        setTimeout(() => { sedangTransisiFullscreen = false; }, 800);
+      }
+    }
+
+    function keluarFullscreenUjian() {
+      const overlay = document.getElementById('fullscreen-lock-overlay');
+      if (overlay) overlay.classList.remove('active');
+      try {
+        if (isSedangFullscreen()) {
+          if (document.exitFullscreen) document.exitFullscreen();
+          else if (document.webkitExitFullscreen) document.webkitExitFullscreen();
+        }
+      } catch (e) {}
+    }
+
+    function sinkronkanOverlayFullscreen() {
+      const overlay = document.getElementById('fullscreen-lock-overlay');
+      if (!overlay) return;
+      if (ujianAktif && !sedangMengirim && isFullscreenDidukung() && !isSedangFullscreen()) {
+        overlay.classList.add('active');
+      } else {
+        overlay.classList.remove('active');
+      }
+    }
+
     // Masuk Ujian (Validasi Token Spesifik per Mata Pelajaran & Materi + Log Akses)
     async function mulaiMasukUjian() {
       const nama = document.getElementById('siswa-nama').value.trim();
@@ -1786,6 +1910,9 @@
         Swal.fire('Perhatian', 'Semua kolom identitas, mata pelajaran, materi, dan token wajib diisi!', 'warning');
         return;
       }
+
+      // Aktifkan Fullscreen tepat saat tombol Masuk Ujian diklik
+      masukFullscreenUjian();
 
       Swal.fire({ title: 'Memvalidasi Token Materi & Memuat Soal...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
 
@@ -1800,19 +1927,23 @@
           deviceId: getOrCreateDeviceId()
         });
         if (!res.valid) {
+          keluarFullscreenUjian();
           Swal.fire('Token Tidak Sesuai', `Token akses untuk materi "${mapel} - ${materi}" tidak valid!`, 'error');
           return;
         }
         if (!res.soal || res.soal.length === 0) {
+          keluarFullscreenUjian();
           Swal.fire('Kosong', 'Belum ada soal untuk mata pelajaran & materi yang dipilih.', 'info');
           return;
         }
         Swal.close();
-        soalList = res.soal;
+        // Acak urutan nomor soal untuk setiap peserta ujian baru
+        soalList = acakUrutanSoal(res.soal);
         activeMapel = mapel;
         activeMateri = materi;
         bukaLembarCBT(nama, iden, mapel, materi, false);
       } catch (err) {
+        keluarFullscreenUjian();
         Swal.fire('Gagal Terhubung', 'Pastikan koneksi internet stabil dan deployment GAS sudah diperbarui.', 'error');
       }
     }
@@ -1840,6 +1971,7 @@
       tampilkanSoal(currentIndex);
       mulaiTimerUjian();
       simpanSesiLokal();
+      sinkronkanOverlayFullscreen();
     }
 
     function mulaiTimerUjian() {
@@ -1956,6 +2088,13 @@
       renderGrid();
     }
 
+    // Cek apakah kolom Opsi_A s/d Opsi_D benar-benar berisi pernyataan/opsi (mengabaikan kosong atau tanda strip '-')
+    function isOpsiTersedia(val) {
+      if (val === undefined || val === null) return false;
+      const str = String(val).trim();
+      return str !== '' && str !== '-' && str !== '--' && str.toLowerCase() !== 'null';
+    }
+
     function simpanJawabanAktif() {
       const s = soalList[currentIndex];
       if (!s) return;
@@ -1973,9 +2112,9 @@
         jawabanPeserta[id] = vals.sort().join(',');
       } 
       else if (jenis === 'BS') {
-        const opsiList = ['A', 'B', 'C', 'D'].filter(opt => s['Opsi_' + opt]);
+        const opsiList = ['A', 'B', 'C', 'D'].filter(opt => isOpsiTersedia(s['Opsi_' + opt]));
         let deret = [];
-        let terisiSemua = true;
+        let terisiSemua = opsiList.length > 0;
 
         opsiList.forEach((_, oIdx) => {
           const checked = document.querySelector(`input[name="bs_${id}_${oIdx}"]:checked`);
@@ -2044,7 +2183,7 @@
 
       if (jenis === 'PG' || jenis === 'LITERASI') {
         ['A', 'B', 'C', 'D'].forEach(opt => {
-          if (s['Opsi_' + opt] !== undefined && s['Opsi_' + opt] !== '') {
+          if (isOpsiTersedia(s['Opsi_' + opt])) {
             const isChecked = currentJawab === opt ? 'checked' : '';
             const selClass = isChecked ? 'selected' : '';
             const teksOpsi = formatTeksOpsi(s['Opsi_' + opt]);
@@ -2058,7 +2197,7 @@
       } else if (jenis === 'MCMA') {
         const arrJawab = currentJawab ? currentJawab.split(',') : [];
         ['A', 'B', 'C', 'D'].forEach(opt => {
-          if (s['Opsi_' + opt] !== undefined && s['Opsi_' + opt] !== '') {
+          if (isOpsiTersedia(s['Opsi_' + opt])) {
             const isChecked = arrJawab.includes(opt) ? 'checked' : '';
             const selClass = isChecked ? 'selected' : '';
             const teksOpsi = formatTeksOpsi(s['Opsi_' + opt]);
@@ -2071,7 +2210,7 @@
         });
       } else if (jenis === 'BS') {
         const arrJawab = currentJawab ? currentJawab.split('-') : [];
-        const opsiList = ['A', 'B', 'C', 'D'].filter(opt => s['Opsi_' + opt]);
+        const opsiList = ['A', 'B', 'C', 'D'].filter(opt => isOpsiTersedia(s['Opsi_' + opt]));
 
         html += `
           <div class="bs-table-wrap">
@@ -2125,19 +2264,91 @@
       renderGrid();
     }
 
-    // Deteksi Pindah Tab / Aplikasi (Anti-Curang)
-    document.addEventListener("visibilitychange", () => {
+    // === SISTEM PROTEKSI ANTI-CURANG (ANTI-CHEATING) ===
+    let waktuPelanggaranTerakhir = 0;
+
+    function catatPelanggaranUjian(alasan = 'Keluar dari halaman ujian') {
+      if (!ujianAktif || sedangMengirim || sedangTransisiFullscreen) return;
+      const sekarang = Date.now();
+      // Cooldown 2.5 detik agar event visibilitychange & window.blur yang muncul bersamaan tidak dihitung 2 kali
+      if (sekarang - waktuPelanggaranTerakhir < 2500) return;
+      waktuPelanggaranTerakhir = sekarang;
+
+      jumlahPelanggaran = Math.min(jumlahPelanggaran + 1, MAKS_PELANGGARAN);
+      document.getElementById('pelanggaran-count').innerText = `${jumlahPelanggaran}/${MAKS_PELANGGARAN}`;
+
+      if (jumlahPelanggaran >= MAKS_PELANGGARAN) {
+        ujianAktif = false;
+        hapusSesiLokal(); // Langsung hapus sesi lokal agar tidak bisa di-refresh untuk lanjut ujian
+        kirimJawabanFinal(true);
+      } else {
+        simpanSesiLokal();
+        Swal.fire(
+          'Peringatan Kecurangan!',
+          `${alasan}! Pelanggaran ke-${jumlahPelanggaran} dari ${MAKS_PELANGGARAN}. Jika mencapai ${MAKS_PELANGGARAN} kali, ujian otomatis dihentikan.`,
+          'warning'
+        );
+      }
+    }
+
+    // 1. Deteksi Pindah Tab / Minimize Aplikasi
+    document.addEventListener('visibilitychange', () => {
       if (document.visibilityState === 'hidden' && ujianAktif && !sedangMengirim) {
-        jumlahPelanggaran = Math.min(jumlahPelanggaran + 1, MAKS_PELANGGARAN);
-        document.getElementById('pelanggaran-count').innerText = `${jumlahPelanggaran}/${MAKS_PELANGGARAN}`;
-        if (jumlahPelanggaran >= MAKS_PELANGGARAN) {
-          ujianAktif = false;
-          hapusSesiLokal(); // Langsung hapus sesi lokal agar tidak bisa di-refresh untuk lanjut ujian
-          kirimJawabanFinal(true);
-        } else {
-          simpanSesiLokal();
-          Swal.fire('Peringatan!', `Dilarang keluar dari halaman ujian! Pelanggaran ke-${jumlahPelanggaran} dari ${MAKS_PELANGGARAN}.`, 'warning');
-        }
+        catatPelanggaranUjian('Terdeteksi berpindah tab atau meninggalkan aplikasi ujian');
+      }
+    });
+
+    // 2. Deteksi Split-Screen / Floating Window / Kehilangan Fokus Jendela + Auto-Blur Soal
+    window.addEventListener('blur', () => {
+      if (ujianAktif && !sedangMengirim) {
+        const pageUjian = document.getElementById('page-ujian');
+        if (pageUjian) pageUjian.classList.add('exam-blurred');
+        catatPelanggaranUjian('Terdeteksi membuka jendela aplikasi lain / Split-Screen');
+      }
+    });
+
+    window.addEventListener('focus', () => {
+      const pageUjian = document.getElementById('page-ujian');
+      if (pageUjian) pageUjian.classList.remove('exam-blurred');
+    });
+
+    // 3. Deteksi Keluar dari Mode Layar Penuh (Fullscreen Lock)
+    ['fullscreenchange', 'webkitfullscreenchange', 'msfullscreenchange'].forEach(evtName => {
+      document.addEventListener(evtName, () => {
+        sinkronkanOverlayFullscreen();
+      });
+    });
+
+    // 4. Blokir Klik Kanan, Copy-Paste, & Pintasan Keyboard (Ctrl+C, Ctrl+F, Ctrl+U, F12) Selama Ujian
+    document.addEventListener('contextmenu', e => {
+      if (ujianAktif) e.preventDefault();
+    });
+
+    ['copy', 'cut', 'paste', 'dragstart'].forEach(evtName => {
+      document.addEventListener(evtName, e => {
+        if (ujianAktif) e.preventDefault();
+      });
+    });
+
+    document.addEventListener('keydown', e => {
+      if (!ujianAktif) return;
+      const key = (e.key || '').toLowerCase();
+      const isInputIsian = e.target && e.target.tagName === 'INPUT' && e.target.type === 'text';
+
+      // Blokir F12 (Inspect Element) atau PrintScreen
+      if (e.key === 'F12' || e.key === 'PrintScreen') {
+        e.preventDefault();
+        return;
+      }
+      // Blokir Ctrl+Shift+I / J / C (DevTools)
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey && ['i', 'j', 'c'].includes(key)) {
+        e.preventDefault();
+        return;
+      }
+      // Blokir Ctrl+C, Ctrl+U, Ctrl+F, Ctrl+P, Ctrl+S, Ctrl+A (kecuali Ctrl+A di kotak input isian)
+      if ((e.ctrlKey || e.metaKey) && ['c', 'x', 'v', 'u', 'f', 'p', 's', 'a'].includes(key)) {
+        if (isInputIsian && key === 'a') return;
+        e.preventDefault();
       }
     });
 
@@ -2167,6 +2378,9 @@
       ujianAktif = false;
       if (timerInterval) clearInterval(timerInterval);
       hapusSesiLokal();
+      const pageUjian = document.getElementById('page-ujian');
+      if (pageUjian) pageUjian.classList.remove('exam-blurred');
+      keluarFullscreenUjian();
 
       Swal.fire({
         icon: karenaPelanggaran ? 'error' : undefined,
